@@ -4,18 +4,18 @@ import numpy as np
 def gen_data(path):
 
     # 1.训练数据、测试数据
-    train = pd.read(path + "train.csv")
-    test = pd.read(path + "test.csv")
+    train = pd.read_csv(path + "train.csv")
+    test = pd.read_csv(path + "test.csv")
     # 2.标的属性表（listing_info.csv）
-    listing_info = pd.read(path + "listing_info.csv")
+    listing_info = pd.read_csv(path + "listing_info.csv")
     # 3. 借款用户基础信息表（user_info.csv）
-    user_info = pd.read(path + "user_info.csv")
+    user_info = pd.read_csv(path + "user_info.csv")
     # 4. 用户画像标签列表（user_taglist.csv）
-    user_taglist = pd.read(path + "user_taglist.csv")
+    user_taglist = pd.read_csv(path + "user_taglist.csv")
     # 5.借款用户操作行为日志表（user_behavior_logs.csv）
-    user_behavior_logs = pd.read(path + "user_behavior_logs.csv")
+    user_behavior_logs = pd.read_csv(path + "user_behavior_logs.csv")
     # 6.用户还款日志表（user_repay_logs.csv）
-    user_repay_logs = pd.read(path + "user_repay_logs.csv")
+    user_repay_logs = pd.read_csv(path + "user_repay_logs.csv")
 
     return train
 
@@ -53,14 +53,26 @@ def analysis_data(path):
 
     print(len(set(train.user_id) & set(test.user_id)))
 
-    print(len(train[train.repay_date == "\\N"])/len(train))
-    train = train[train.repay_date != "\\N"]
+    train['label'] = -1
     train['due_date'] = pd.to_datetime(train['due_date'])
-    train['repay_date'] = pd.to_datetime(train['repay_date'])
-    train['gap_day'] = train['due_date'] - train['repay_date']
+    ind = train[train['repay_date'] != '\\N'].index
+    train.ix[ind, 'label'] = (train.ix[ind, 'due_date'] - pd.to_datetime(train.ix[ind, 'repay_date'])).map(lambda x: x.days)
 
-    a = train.groupby(['gap_day'],as_index= False)['user_id'].agg({'count':'count'})
+    train['mm'] = 0
+    train.ix[ind, 'mm'] = train.ix[ind, 'due_amt'].astype(float) - train.ix[ind, 'repay_amt'].astype(float)
+
+    a = train.groupby(['label'],as_index= False)['user_id'].agg({'count':'count'})
     a['r'] = a['count'] / len(train)
     print(a)
 
+    a = train.groupby(['mm'], as_index=False)['user_id'].agg({'count': 'count'})
+    print(a)
+
+def get_label(due_date, repay_date):
+    if repay_date == '\\N':
+        label = -1
+    else:
+        label = due_date - pd.to_datetime(repay_date)
+    print(label)
+    return label
 

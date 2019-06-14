@@ -39,9 +39,11 @@ if __name__ == "__main__":
     #时间序列，回归，或者分类(排除逾期的用户，剩下用户直接统计还款日作为结果) 二分类或多分类（逾期，逾期前1天、2天、3天还款）
     args = parse_command_params()
 
-    analysis_data(args['path'])
+    # analysis_data(args['path'])
 
-    # train, test = gen_train_data(args['path'])
+    train, test = gen_train_data(args)
+    print(train.head())
+    print(test.head())
     # model = models.fit(train, args)
     # result = model.predict(test)
     # save_zip(result, args)
