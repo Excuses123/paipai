@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from feature_extraction import *
 import models
-
+import zipfile, os
 
 def parse_command_params():
     """
@@ -15,13 +15,20 @@ def parse_command_params():
     ap.add_argument('-e', '--epochs', default=100, help='how many epochs to train')
     ap.add_argument('-l', '--loss', default='ce', help='which loss function to train')
     ap.add_argument('-p', '--path', default='../data/', help='data path')
+    ap.add_argument('-o', '--output', default='result.csv', help='output result')
     args_ = vars(ap.parse_args())
     return args_
 
 
-def save_zip(result, path):
-    result.to_csv(path)
-
+def save_zip(result, args):
+    path, filename = args['path'], args['output']
+    if not os._exists('../output/'):
+        os.mkdir('../output/')
+    os.chdir(path + "output/")
+    result.to_csv(filename, index = None)
+    zip = zipfile.ZipFile(filename.split('.')[0] + '.zip', "w", zipfile.ZIP_DEFLATED)
+    zip.write(filename)
+    zip.close()
 
 
 
@@ -37,7 +44,7 @@ if __name__ == "__main__":
     # train, test = gen_train_data(args['path'])
     # model = models.fit(train, args)
     # result = model.predict(test)
-    # save_zip(result, args['path'])
+    # save_zip(result, args)
 
     print('done !')
 

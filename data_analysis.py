@@ -28,26 +28,30 @@ def analysis_data(path):
     print(train.head())
     print(test.head())
 
-    # print("train columns: \n", list(train.columns))
-    # print("test columns: \n", list(test.columns))
-    # print("train shape: ", train.shape)
-    # print("test shape: ", test.shape)
-    # print("train summary: \n", train.describe())
-    # print("test summary: \n", test.describe())
-    #
-    # print("train user_id nunique: ", train['user_id'].nunique())
-    # print("test user_id nunique: ", test['user_id'].nunique())
-    #
-    # print("train listing_id nunique: ", train['listing_id'].nunique())
-    # print("test listing_id nunique: ", test['listing_id'].nunique())
-    #
-    # print("train auditing_date: ", train['auditing_date'].min(),train['auditing_date'].max())
-    # print("test auditing_date: ", test['auditing_date'].min(), test['auditing_date'].max())
-    #
-    # print("train due_date: ", train['due_date'].min(), train['due_date'].max())
-    # print("test due_date: ", test['due_date'].min(), test['due_date'].max())
+    a = train.groupby(['listing_id','repay_date'],as_index=False)['due_amt'].agg({'repay_amt':'sum'})
+    print(a.shape)
+    print(a.head())
 
-    # print(len(set(train.user_id) & set(test.user_id)))
+    print("train columns: \n", list(train.columns))
+    print("test columns: \n", list(test.columns))
+    print("train shape: ", train.shape)
+    print("test shape: ", test.shape)
+    print("train summary: \n", train.describe())
+    print("test summary: \n", test.describe())
+
+    print("train user_id nunique: ", train['user_id'].nunique())
+    print("test user_id nunique: ", test['user_id'].nunique())
+
+    print("train listing_id nunique: ", train['listing_id'].nunique())
+    print("test listing_id nunique: ", test['listing_id'].nunique())
+
+    print("train auditing_date: ", train['auditing_date'].min(),train['auditing_date'].max())
+    print("test auditing_date: ", test['auditing_date'].min(), test['auditing_date'].max())
+
+    print("train due_date: ", train['due_date'].min(), train['due_date'].max())
+    print("test due_date: ", test['due_date'].min(), test['due_date'].max())
+
+    print(len(set(train.user_id) & set(test.user_id)))
 
     print(len(train[train.repay_date == "\\N"])/len(train))
     train = train[train.repay_date != "\\N"]
