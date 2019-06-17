@@ -1,7 +1,9 @@
 from argparse import ArgumentParser
 from feature_extraction import *
 import models
-import zipfile, os
+import zipfile, os, warnings
+
+warnings.filterwarnings("ignore")
 
 def parse_command_params():
     """
@@ -9,28 +11,22 @@ def parse_command_params():
     :return:
     """
     ap = ArgumentParser()  # 创建解析器
-    ap.add_argument('-s', '--show', default='no', help="if you want to visualize training process")
-    ap.add_argument('-m', '--method', default='all', help='fit all or fit generator')
-    ap.add_argument('-b', '--batch', default=64, help='batch size of training')
-    ap.add_argument('-e', '--epochs', default=100, help='how many epochs to train')
-    ap.add_argument('-l', '--loss', default='ce', help='which loss function to train')
     ap.add_argument('-p', '--path', default='../data/', help='data path')
     ap.add_argument('-o', '--output', default='result.csv', help='output result')
+    ap.add_argument('-m', '--model', default='lgb', help='use model')
+    ap.add_argument('-r', '--round', default=100, help='model train rounds')
     args_ = vars(ap.parse_args())
     return args_
 
-
 def save_zip(result, args):
     path, filename = args['path'], args['output']
-    if not os._exists('../output/'):
-        os.mkdir('../output/')
+    if not os.path.exists(path + 'output/'):
+        os.mkdir(path + 'output/')
     os.chdir(path + "output/")
     result.to_csv(filename, index = None)
     zip = zipfile.ZipFile(filename.split('.')[0] + '.zip', "w", zipfile.ZIP_DEFLATED)
     zip.write(filename)
     zip.close()
-
-
 
 if __name__ == "__main__":
     '''提供了2018年1月1日至2018年12月31日的标的第一期的还款数据作为训练集，
@@ -41,12 +37,11 @@ if __name__ == "__main__":
 
     # analysis_data(args['path'])
 
-    train, test = gen_train_data(args)
-    print(train.head())
-    print(test.head())
-    # model = models.fit(train, args)
-    # result = model.predict(test)
-    # save_zip(result, args)
+    train, test = gen_data(args)
+    cols = list(set(train.columns) - set(['auditing_date', 'due_date', 'insertdate', 'label']))
+    model = models.fit(train, args, cols)
+    result = gen_result(test, cols)
+    save_zip(result, args)
 
     print('done !')
 

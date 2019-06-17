@@ -2,10 +2,29 @@ import lightgbm as lgb
 import xgboost as xgb
 
 
+def fit(train, args, cols):
 
+    if args['model'] == 'lgb':
 
-def fit(train):
+        lgb_params = {
+            'boosting_type': 'gbdt',
+            'objective': 'regression',
+            'metric': 'rmse',
+            'num_leaves': 63,
+            'learning_rate': 0.01,
+            'feature_fraction': 0.9,
+            'bagging_fraction': 0.9,
+            'bagging_seed': 0,
+            'bagging_freq': 1,
+            'verbose': 1,
+            'reg_alpha': 1,
+            'reg_lambda': 2
+        }
 
-    model = lgb.train(train)
+        lgb_train = lgb.Dataset(train[cols], train['label'])
+
+        lgb_bst = lgb.cv(lgb_params, lgb_train, nfold=5, num_boost_round=int(args['round']), early_stopping_rounds=100, verbose_eval=10, stratified=False)
+        print('best round = ',len(lgb_bst['rmse-mean']))
+        model = lgb.train(lgb_params, lgb_train, num_boost_round=len(lgb_bst['rmse-mean']))
 
     return model
