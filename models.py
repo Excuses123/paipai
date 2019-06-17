@@ -1,5 +1,6 @@
 import lightgbm as lgb
 import xgboost as xgb
+import pandas as pd
 
 
 def fit(train, args, cols):
@@ -26,5 +27,9 @@ def fit(train, args, cols):
         lgb_bst = lgb.cv(lgb_params, lgb_train, nfold=5, num_boost_round=int(args['round']), early_stopping_rounds=100, verbose_eval=10, stratified=False)
         print('best round = ',len(lgb_bst['rmse-mean']))
         model = lgb.train(lgb_params, lgb_train, num_boost_round=len(lgb_bst['rmse-mean']))
+
+        lgb_importance = pd.DataFrame(
+            {'gain': list(model.feature_importance(importance_type='gain')), 'feature': cols})
+        print(lgb_importance.sort_values(by=['gain'], ascending=False).head(30))
 
     return model
