@@ -139,17 +139,21 @@ def add_user_repay_features(train, test, path):
 
 #####help function####
 def gen_result(model, test, cols):
+    print('===========gen result==========')
     test['pred'] = model.predict(test[cols]).astype(int)
-    test['repay_date'] = test[['due_date', 'pred']].apply(gen_repay_date, axis=1)
+    test['repay_date'] = test[['auditing_date', 'due_date', 'pred']].apply(gen_repay_date, axis=1)
     test['repay_amt'] = test[['due_amt', 'pred']].apply(gen_repay_amt, axis=1)
 
     return test[['listing_id', 'repay_amt', 'repay_date']]
 
 def gen_repay_date(x):
-    if x[1] < 0:
+    date = pd.to_datetime(x[1]) - datetime.timedelta(days=x[2])
+    if x[2] < 0:
         return ''
+    elif date <= pd.to_datetime(x[0]):
+        return x[0]
     else:
-        return str(pd.to_datetime(x[0]) - datetime.timedelta(days=x[1]))[:10]
+        return str(date)[:10]
 
 def gen_repay_amt(x):
     if x[1] < 0:

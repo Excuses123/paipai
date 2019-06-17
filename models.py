@@ -11,8 +11,8 @@ def fit(train, args, cols):
             'boosting_type': 'gbdt',
             'objective': 'regression',
             'metric': 'rmse',
-            'num_leaves': 63,
-            'learning_rate': 0.01,
+            'num_leaves': 127,
+            'learning_rate': args['learning_rate'],
             'feature_fraction': 0.9,
             'bagging_fraction': 0.9,
             'bagging_seed': 0,
@@ -24,7 +24,7 @@ def fit(train, args, cols):
 
         lgb_train = lgb.Dataset(train[cols], train['label'])
 
-        lgb_bst = lgb.cv(lgb_params, lgb_train, nfold=5, num_boost_round=int(args['round']), early_stopping_rounds=100, verbose_eval=10, stratified=False)
+        lgb_bst = lgb.cv(lgb_params, lgb_train, nfold=5, num_boost_round=int(args['round']), early_stopping_rounds=100, verbose_eval=50, stratified=False)
         print('best round = ',len(lgb_bst['rmse-mean']))
         model = lgb.train(lgb_params, lgb_train, num_boost_round=len(lgb_bst['rmse-mean']))
 

@@ -15,10 +15,12 @@ def parse_command_params():
     ap.add_argument('-o', '--output', default='result.csv', help='output result')
     ap.add_argument('-m', '--model', default='lgb', help='use model')
     ap.add_argument('-r', '--round', default=100, help='model train rounds')
+    ap.add_argument('-lr', '--learning_rate', default=0.05, help='learning rate')
     args_ = vars(ap.parse_args())
     return args_
 
 def save_zip(result, args):
+    print('==========save zip result!============')
     path, filename = args['path'], args['output']
     if not os.path.exists(path + 'output/'):
         os.mkdir(path + 'output/')
@@ -27,6 +29,8 @@ def save_zip(result, args):
     zip = zipfile.ZipFile(filename.split('.')[0] + '.zip', "w", zipfile.ZIP_DEFLATED)
     zip.write(filename)
     zip.close()
+
+
 
 if __name__ == "__main__":
     '''提供了2018年1月1日至2018年12月31日的标的第一期的还款数据作为训练集，
@@ -40,7 +44,7 @@ if __name__ == "__main__":
     train, test = gen_data(args)
     cols = list(set(train.columns) - set(['auditing_date', 'due_date', 'insertdate', 'label']))
     model = models.fit(train, args, cols)
-    result = gen_result(test, cols)
+    result = gen_result(model, test, cols)
     save_zip(result, args)
 
     print('done !')
