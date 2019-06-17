@@ -35,7 +35,7 @@ def gen_train_data(path):
     train = pd.read_csv(path + "data/train.csv")
     test = pd.read_csv(path + "data/test.csv")
 
-    train['label'] = -1
+    train['label'] = -5
     ind = train[train['repay_date'] != '\\N'].index
     train.ix[ind, 'label'] = (pd.to_datetime(train.ix[ind, 'due_date']) - pd.to_datetime(train.ix[ind, 'repay_date'])).map(lambda x: x.days)
 
@@ -57,7 +57,7 @@ def add_features(train, test, path):
     train, test = add_listing_info_features(train, test, path)
     train, test = add_user_info_features(train, test, path)
     # train, test = add_user_taglist_features(train, test, path)
-    # train, test = add_user_behavior_features(train, test, path)
+    train, test = add_user_behavior_features(train, test, path)
     # train, test = add_user_repay_features(train, test, path)
 
     for data in [train, test]:
@@ -127,6 +127,14 @@ def add_user_behavior_features(train, test, path):
     print("==========add_user_behavior_features==========")
     # 5.借款用户操作行为日志表（user_behavior_logs.csv）
     user_behavior_logs = pd.read_csv(path + "data/user_behavior_logs.csv")
+
+    a1 = user_behavior_logs.groupby(['user_id'], as_index=False)['behavior_type'].agg({'user_behavior_count':'count'})
+    a2 = user_behavior_logs.groupby(['user_id', 'behavior_type']).size().unstack().reset_index()
+    a2.columns = ['user_id'] + ['behavior_type_' + str(i) for i in a2.columns[1:]]
+
+    for a in [a1, a2]:
+        train = pd.merge(train, a, on = ['user_id'], how='left')
+        test = pd.merge(test, a, on=['user_id'], how='left')
 
     return train, test
 
