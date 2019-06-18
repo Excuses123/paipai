@@ -1,4 +1,5 @@
 from data_analysis import *
+from models import *
 import os, gc, datetime
 from sklearn.preprocessing import LabelEncoder
 
@@ -51,14 +52,13 @@ def gen_train_data(path):
     return train.drop(columns = ['repay_date', 'repay_amt']), test
 
 
-
 def add_features(train, test, path):
 
     train, test = add_listing_info_features(train, test, path)
     train, test = add_user_info_features(train, test, path)
     # train, test = add_user_taglist_features(train, test, path)
     train, test = add_user_behavior_features(train, test, path)
-    # train, test = add_user_repay_features(train, test, path)
+    train, test = add_user_repay_features(train, test, path)
 
     for data in [train, test]:
         data['auditing_date'] = pd.to_datetime(data['auditing_date'])
@@ -115,11 +115,25 @@ def add_user_info_features(train, test, path):
 
     return train, test
 
-
 def add_user_taglist_features(train, test, path):
     print("==========add_user_taglist_features==========")
     # 4. 用户画像标签列表（user_taglist.csv）
     user_taglist = pd.read_csv(path + "data/user_taglist.csv")
+
+    a1 = user_taglist.groupby(['user_id'], as_index=False)['insertdate'].agg({'user_insertdate_count': 'count'})
+
+    user_taglist.sort_values(by=['user_id', 'insertdate'], inplace=True)
+    user_taglist = user_taglist.ix[user_taglist.groupby(['user_id'])['insertdate'].tail(1).index, :]
+
+    user_taglist['taglist'] = user_taglist['taglist'].map(lambda x: x.split('|'))
+    user_taglist['taglist_len'] = user_taglist['taglist'].map(lambda x: len(x))
+
+    if os.path.exists(path + 'cache/user_taglist_word2vec.model'):
+        tag_model = Word2Vec.load(path + 'cache/user_taglist_word2vec.model')
+    else:
+        tag_model = word2vec_fit(user_taglist['taglist'], user_taglist['taglist_len'].max())
+        tag_model.save(path + 'cache/user_taglist_word2vec.model')
+
 
     return train, test
 
@@ -142,6 +156,35 @@ def add_user_repay_features(train, test, path):
     print("==========add_user_repay_features==========")
     # 6.用户还款日志表（user_repay_logs.csv）
     user_repay_logs = pd.read_csv(path + "data/user_repay_logs.csv")
+    user_repay_logs['overdue'] = user_repay_logs['repay_date'].map(lambda x: 1 if x == '2200-01-01' else 0)
+
+    a1 = user_repay_logs.groupby(['user_id'], as_index=False)['listing_id'].agg({
+        'user_repay_count':'count','user_repay_nunique':'nunique'})
+    a2 = user_repay_logs.groupby(['user_id'], as_index=False)['order_id'].agg(
+        {'user_repay_order_id_mean': 'mean'})
+    a3 = user_repay_logs.groupby(['user_id'], as_index=False)['due_amt'].agg(
+        {'user_repay_due_amt_mean': 'mean', 'user_repay_due_amt_sum': 'sum', 'user_repay_due_amt_max': 'max'})
+    a4 = user_repay_logs.groupby(['user_id', 'overdue']).size().unstack().reset_index().fillna(0)
+    a4.columns = ['user_id'] + ['user_id_overdue_' + str(i) for i in a4.columns[1:]]
+    a4['user_id_overdue_rate'] = a4['user_id_overdue_1'] / a4['user_id_overdue_0']
+
+    b1 = user_repay_logs.groupby(['listing_id'], as_index=False)['user_id'].agg({
+        'listing_id_repay_count': 'count', 'listing_id_repay_nunique': 'nunique'})
+    b2 = user_repay_logs.groupby(['listing_id'], as_index=False)['order_id'].agg(
+        {'listing_id_repay_order_id_mean': 'mean'})
+    b3 = user_repay_logs.groupby(['listing_id'], as_index=False)['due_amt'].agg(
+        {'listing_id_repay_due_amt_mean': 'mean', 'listing_id_repay_due_amt_sum': 'sum', 'listing_id_repay_due_amt_max': 'max'})
+    b4 = user_repay_logs.groupby(['listing_id', 'overdue']).size().unstack().reset_index().fillna(0)
+    b4.columns = ['listing_id'] + ['listing_id_overdue_' + str(i) for i in b4.columns[1:]]
+    b4['listing_id_overdue_rate'] = b4['listing_id_overdue_1'] / b4['listing_id_overdue_0']
+
+    for a in [a1, a2, a3, a4]:
+        train = pd.merge(train, a, on=['user_id'], how='left')
+        test = pd.merge(test, a, on=['user_id'], how='left')
+
+    for b in [b1, b2, b3, b4]:
+        train = pd.merge(train, b, on=['listing_id'], how='left')
+        test = pd.merge(test, b, on=['listing_id'], how='left')
 
     return train, test
 
@@ -168,12 +211,5 @@ def gen_repay_amt(x):
         return ''
     else:
         return str(x[0])
-
-'''
-user_id,listing_id,auditing_date,due_date,due_amt,repay_date,repay_amt
-748147,3163926,2018-04-25,2018-05-25,72.1167,2018-05-25,72.1167
-672952,3698760,2018-06-09,2018-07-09,258.7045,2018-07-08,258.7045
-404196,2355665,2018-02-18,2018-03-18,307.927,
-'''
 
 

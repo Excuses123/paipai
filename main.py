@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     train, test = gen_data(args)
     print(train.shape, test.shape)
-    cols = list(set(train.columns) - set(['user_id', 'auditing_date', 'due_date', 'insertdate', 'label']))
+    cols = list(set(train.columns) - set(['user_id', 'listing_id', 'auditing_date', 'due_date', 'insertdate', 'label']))
     model = models.fit(train, args, cols)
     result = gen_result(model, test, cols)
     save_zip(result, args)

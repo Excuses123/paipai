@@ -1,7 +1,7 @@
 import lightgbm as lgb
 import xgboost as xgb
 import pandas as pd
-
+from gensim.models import Word2Vec, word2vec
 
 def fit(train, args, cols):
 
@@ -33,3 +33,11 @@ def fit(train, args, cols):
         print(lgb_importance.sort_values(by=['gain'], ascending=False).head(30))
 
     return model
+
+def word2vec_fit():
+
+    sentences = word2vec.Text8Corpus()
+    model = Word2Vec(sentences, sg=1, size=100, window=5, min_count=5, negative=3, sample=0.001, hs=1, workers=4)
+
+    return model
+
