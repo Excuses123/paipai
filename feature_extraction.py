@@ -36,7 +36,7 @@ def gen_train_data(path):
     train = pd.read_csv(path + "data/train.csv")
     test = pd.read_csv(path + "data/test.csv")
 
-    train['label'] = -5
+    train['label'] = -10
     ind = train[train['repay_date'] != '\\N'].index
     train.ix[ind, 'label'] = (pd.to_datetime(train.ix[ind, 'due_date']) - pd.to_datetime(train.ix[ind, 'repay_date'])).map(lambda x: x.days)
 
@@ -72,6 +72,7 @@ def add_listing_info_features(train, test, path):
     print("==========add_listing_info_features==========")
     # 2.标的属性表（listing_info.csv）
     listing_info = pd.read_csv(path + "data/listing_info.csv")
+    listing_info['principal/term'] = listing_info['principal'] / listing_info['term']
 
     train = pd.merge(train, listing_info[['listing_id', 'term', 'rate', 'principal']],
                      on=['listing_id'], how='left')
@@ -86,9 +87,14 @@ def add_listing_info_features(train, test, path):
         {'user_rate_mean': 'mean','user_rate_min': 'min', 'user_rate_max': 'max', 'user_rate_var': 'var'})
 
     a3 = listing_info.groupby(['user_id'], as_index=False)['principal'].agg(
-        {'user_principal_mean': 'mean', 'user_principal_min': 'min', 'user_principal_max': 'max', 'user_principal_var': 'var'})
+        {'user_principal_mean': 'mean', 'user_principal_min': 'min', 'user_principal_max': 'max',
+         'user_principal_var': 'var', 'user_principal_sum': 'sum'})
 
-    for a in [a1, a2, a3]:
+    a4 = listing_info.groupby(['user_id'], as_index=False)['principal/term'].agg(
+        {'user_principal/term_mean': 'mean', 'user_principal/term_min': 'min', 'user_principal/term_max': 'max',
+         'user_principal/term_var': 'var', 'user_principal/term_sum': 'sum'})
+
+    for a in [a1, a2, a3, a4]:
         train = pd.merge(train, a, on='user_id', how='left')
         test = pd.merge(test, a, on='user_id', how='left')
 
@@ -158,6 +164,8 @@ def add_user_repay_features(train, test, path):
     user_repay_logs = pd.read_csv(path + "data/user_repay_logs.csv")
     user_repay_logs['overdue'] = user_repay_logs['repay_date'].map(lambda x: 1 if x == '2200-01-01' else 0)
 
+    user_repay_logs['gap_date'] = user_repay_logs[['due_date', 'repay_date']].apply(gen_repay_gap_day, axis = 1)
+
     a1 = user_repay_logs.groupby(['user_id'], as_index=False)['listing_id'].agg({
         'user_repay_count':'count','user_repay_nunique':'nunique'})
     a2 = user_repay_logs.groupby(['user_id'], as_index=False)['order_id'].agg(
@@ -167,6 +175,9 @@ def add_user_repay_features(train, test, path):
     a4 = user_repay_logs.groupby(['user_id', 'overdue']).size().unstack().reset_index().fillna(0)
     a4.columns = ['user_id'] + ['user_id_overdue_' + str(i) for i in a4.columns[1:]]
     a4['user_id_overdue_rate'] = a4['user_id_overdue_1'] / a4['user_id_overdue_0']
+
+    a5 = user_repay_logs.groupby(['user_id'], as_index=False)['gap_date'].agg(
+        {'user_repay_gap_date_mean': 'mean', 'user_repay_gap_date_sum': 'sum', 'user_repay_gap_date_max': 'max', 'user_repay_gap_date_var': 'var'})
 
     b1 = user_repay_logs.groupby(['listing_id'], as_index=False)['user_id'].agg({
         'listing_id_repay_count': 'count', 'listing_id_repay_nunique': 'nunique'})
@@ -178,11 +189,15 @@ def add_user_repay_features(train, test, path):
     b4.columns = ['listing_id'] + ['listing_id_overdue_' + str(i) for i in b4.columns[1:]]
     b4['listing_id_overdue_rate'] = b4['listing_id_overdue_1'] / b4['listing_id_overdue_0']
 
-    for a in [a1, a2, a3, a4]:
+    b5 = user_repay_logs.groupby(['listing_id'], as_index=False)['gap_date'].agg(
+        {'listing_id_repay_gap_date_mean': 'mean', 'listing_id_repay_gap_date_sum': 'sum',
+         'listing_id_repay_gap_date_max': 'max', 'listing_id_repay_gap_date_var': 'var'})
+
+    for a in [a1, a2, a3, a4, a5]:
         train = pd.merge(train, a, on=['user_id'], how='left')
         test = pd.merge(test, a, on=['user_id'], how='left')
 
-    for b in [b1, b2, b3, b4]:
+    for b in [b1, b2, b3, b4, b5]:
         train = pd.merge(train, b, on=['listing_id'], how='left')
         test = pd.merge(test, b, on=['listing_id'], how='left')
 
@@ -212,4 +227,8 @@ def gen_repay_amt(x):
     else:
         return str(x[0])
 
-
+def gen_repay_gap_day(x):
+    if x[1] == '2200-01-01':
+        return np.nan
+    else:
+        return (pd.to_datetime(x[0]) - pd.to_datetime(x[1])).days
